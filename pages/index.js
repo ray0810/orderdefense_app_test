@@ -13,19 +13,35 @@ import {
   SkeletonBodyText,
 } from "@shopify/polaris";
 import { Query } from "react-apollo";
-import { useLazyQuery, useMutation } from "@apollo/react-hooks";
+import { useLazyQuery, useMutation, useQuery } from "@apollo/react-hooks";
 import gql from "graphql-tag";
 import { useState, useCallback, useEffect } from "react";
 
-const INJECT_SCRIPT = gql`
+const CREATE_SCRIPT = gql`
   mutation scriptTagCreate($input: ScriptTagInput!) {
     scriptTagCreate(input: $input) {
       scriptTag {
         id
+        src
+        updatedAt
       }
       userErrors {
         field
         message
+      }
+    }
+  }
+`;
+
+const QYERY_SCRIPT = gql`
+  query {
+    scriptTags(first: 10) {
+      edges {
+        node {
+          id
+          src
+          displayScope
+        }
       }
     }
   }
@@ -62,67 +78,27 @@ const CREATE_PRODUCT = gql`
 
 const Index = () => {
   const [
-    deleteScripts,
-    { loading: deleteScriptLoading, data: deleteScriptData },
-  ] = useMutation(DELETE_SCRIPT);
-  const [
-    injectScript,
-    { loading: injectScriptLoading, data: injectScriptFile },
-  ] = useMutation(INJECT_SCRIPT);
-  const [
     createProduct,
     { loading: createProductLoading, data: createProductData },
   ] = useMutation(CREATE_PRODUCT);
+  const { loading, error, data } = useQuery(QYERY_SCRIPT);
+  const [
+    createScripts,
+    { loading: createScriptLoading, data: createScriptData },
+  ] = useMutation(CREATE_SCRIPT, { refetchQueries: [{ query: QYERY_SCRIPT }] });
+  const [
+    deleteScripts,
+    { loading: deleteScriptLoading, data: deleteScriptData },
+  ] = useMutation(DELETE_SCRIPT, { refetchQueries: [{ query: QYERY_SCRIPT }] });
+
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [active, setActive] = useState(true);
-  const handleToggle = useCallback(() => setActive((active) => !active), []);
+  const handleToggle = () => setActive((active) => !active);
+
   const contentStatus = active ? "Disable" : "Enable";
   const textStatus = active ? "enabled" : "disabled";
-  const onSubmitDelete = useCallback(async () => {
-    deleteScripts({
-      variables: {
-        id: "gid://shopify/ScriptTag/162015641774",
-      },
-    });
 
-    console.log("script deleted");
-    //setShowSuccessBanner(false);
-  }, []);
-
-  const changeStatus = useCallback(() => {
-    handleToggle();
-    if (!active) {
-      onSubmitMutation();
-      onSubmitInject();
-    }
-    if (active) {
-      setShowSuccessBanner(false);
-      onSubmitDelete();
-    }
-  });
-  const onSubmitInject = useCallback(async () => {
-    await injectScript({
-      variables: {
-        input: {
-          displayScope: "ONLINE_STORE",
-          src: "https://orderdefense.com/appscript.js",
-        },
-      },
-    });
-    await injectScript({
-      variables: {
-        input: {
-          displayScope: "ONLINE_STORE",
-          src:
-            "https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js",
-        },
-      },
-    });
-
-    console.log("script installed");
-    setShowSuccessBanner(true);
-  }, []);
-  const onSubmitMutation = useCallback(async () => {
+  const onSubmitMutation = async () => {
     await createProduct({
       variables: {
         input: {
@@ -835,31 +811,78 @@ const Index = () => {
         },
       },
     });
+    console.log("Product created");
     setShowSuccessBanner(true);
-  }, []);
+  };
+
+  const onSubmitInject = async () => {
+    await createScripts({
+      variables: {
+        input: {
+          displayScope: "ONLINE_STORE",
+          src: "https://orderdefense.com/appscript.js",
+        },
+      },
+    });
+    console.log("script installed");
+  };
+
+  const deleteScript = async (id) => {
+    await deleteScripts({
+      variables: {
+        id: id,
+      },
+    });
+    console.log("script deleted");
+  };
 
   useEffect(() => {
-    onSubmitMutation();
-    onSubmitInject();
-    setShowSuccessBanner(true);
+    (async () => {
+      await onSubmitMutation();
+      await onSubmitInject();
+      setShowSuccessBanner(true);
+    })();
   }, []);
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>{error.message}</div>;
 
   return (
     <Page>
       <Layout>
         <Layout.Section>
-          <Card>
-            <SettingToggle
-              action={{
-                content: contentStatus,
-                onAction: changeStatus,
-              }}
-              enabled={active}
-            >
-              OrderDefense is{" "}
-              <TextStyle variation="strong">{textStatus}</TextStyle>
-            </SettingToggle>
-          </Card>
+          {createScriptData && (
+            <Card>
+              <SettingToggle
+                action={{
+                  content: contentStatus,
+                  onAction: () => {
+                    const scriptId = data.scriptTags.edges.find(
+                      (item) => item.node.id
+                    );
+                    handleToggle();
+                    if (!active) {
+                      onSubmitMutation();
+                      onSubmitInject();
+                    }
+                    if (active) {
+                      setShowSuccessBanner(false);
+                      deleteScripts({
+                        variables: {
+                          id: scriptId.node.id,
+                        },
+                        refetchQueries: [{ query: QYERY_SCRIPT }],
+                      });
+                    }
+                  },
+                }}
+                enabled={active}
+              >
+                OrderDefense is{" "}
+                <TextStyle variation="strong">{textStatus}</TextStyle>
+              </SettingToggle>
+            </Card>
+          )}
           <Card sectioned>
             <FormLayout>
               <Heading>OrderDefense Product Installation</Heading>
@@ -881,18 +904,60 @@ const Index = () => {
           <Card sectioned>
             <FormLayout>
               <Heading>OrderDefense Script Installation</Heading>
-              {injectScriptFile && showSuccessBanner && (
+              {createScriptData && showSuccessBanner && (
                 <Banner title={`Script installed`} status="success" />
               )}
-              {!showSuccessBanner && !injectScriptLoading && (
+              {!showSuccessBanner && !createScriptLoading && (
                 <Banner
                   title={`OrderDefense Script is not installed.`}
                   status="info"
                 />
               )}
-              {injectScriptLoading && <SkeletonBodyText />}
+              {createScriptLoading && <SkeletonBodyText />}
             </FormLayout>
           </Card>
+          {data.scriptTags.edges.map((item) => {
+            return (
+              <Card sectioned key={item.node.id}>
+                <FormLayout>
+                  <Heading>Delete Scripts</Heading>
+                  {/* {deleteScriptData && showSuccessBanner && (
+                      <Banner
+                        title={`Deleted scripts`}
+                        status="success"
+                        onDismiss={() => {
+                          setShowSuccessBanner(false);
+                        }}
+                      />
+                    )}  */}
+                  <TextContainer>
+                    <p>{item.node.id}</p>
+                    <p>Delete scripts installed on the store.</p>
+                  </TextContainer>
+                  <Button
+                    size="medium"
+                    primary={true}
+                    onClick={() => {
+                      deleteScripts({
+                        variables: {
+                          id: item.node.id,
+                        },
+                      });
+                    }}
+                  >
+                    Delete Installed Scripts
+                    {deleteScriptLoading && (
+                      <Spinner
+                        accessibilityLabel="Spinner example"
+                        size="small"
+                        color="white"
+                      />
+                    )}
+                  </Button>
+                </FormLayout>
+              </Card>
+            );
+          })}
         </Layout.Section>
       </Layout>
     </Page>
