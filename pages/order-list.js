@@ -26,6 +26,7 @@ const QUERY_ORDERS = gql`
         node {
           id
           name
+          createdAt
           displayFulfillmentStatus
           tags
           presentmentCurrencyCode
@@ -33,6 +34,7 @@ const QUERY_ORDERS = gql`
             edges {
               node {
                 id
+                name
                 originalUnitPriceSet {
                   shopMoney {
                     amount
@@ -55,22 +57,43 @@ const QUERY_ORDERS = gql`
 const OrderList = () => {
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState("");
+  const [options, setOptions] = useState([]);
+  const [sortedRows, setSortedRows] = useState(null);
+  const [selected, setSelected] = useState("All");
+  const [filteredData, setFilteredData] = useState([]);
+
   const { loading, error, data } = useQuery(QUERY_ORDERS, {
-    variables: { orderNum: 2 },
+    variables: { orderNum: 50 },
   });
 
-  const [selected, setSelected] = useState("newestUpdate");
-
-  const handleSelectChange = useCallback((value) => setSelected(value), []);
-
-  const options = [{ label: "March", value: "March" }];
+  const handleSelectChange = useCallback(
+    (value) => {
+      setSelected(value);
+      sortCurrency(value);
+      if (value === "All") {
+        setSortedRows(orders);
+      }
+    },
+    [filteredData]
+  );
 
   const dataOrder = () => {
     if (data) {
-      const arr = data.orders.edges.map((order) => {
+      const arr = data.orders.edges.filter((edge) => {
+        const {
+          lineItems: { edges },
+        } = edge.node;
+        const productName = edges.find((item) =>
+          item.node.name.includes("OrderDefense")
+        );
+        return productName;
+      });
+      setFilteredData(arr);
+      const newArr = arr.map((order) => {
         const {
           totalPriceSet: { presentmentMoney },
           name,
+          createdAt,
           lineItems: { edges },
         } = order.node;
         const price = edges.map(
@@ -83,28 +106,88 @@ const OrderList = () => {
         ];
         return rowsItems;
       });
-      setOrders(arr);
+      setOrders(newArr);
+    }
+  };
+
+  const optionsData = () => {
+    if (filteredData.length) {
+      const arr = filteredData.map((order) => {
+        const { createdAt } = order.node;
+        const formatter = new Intl.DateTimeFormat("en-US", { month: "long" });
+        const month = formatter.format(new Date(createdAt));
+        const option = { label: month, value: month };
+        return option;
+      });
+      const filteredOptions = arr.filter(
+        (option, index, self) =>
+          index ===
+          self.findIndex(
+            (obj) => obj.label === option.label && obj.value === option.value
+          )
+      );
+      setOptions([{ label: "All", value: "All" }, ...filteredOptions]);
     }
   };
 
   const totalOrder = () => {
-    let orderPrice = [];
-    if (data) {
-      data.orders.edges.forEach((order) => {
+    if (filteredData.length) {
+      const orderPrice = filteredData.map((order) => {
         const {
           totalPriceSet: { presentmentMoney },
         } = order.node;
-        orderPrice.push(parseFloat(presentmentMoney.amount));
+        const money = parseFloat(presentmentMoney.amount);
+        return money;
       });
       const totalSum = orderPrice.reduce((a, b) => a + b);
       setTotal(totalSum);
     }
   };
 
+  const rows = sortedRows ? sortedRows : orders;
+
+  const sortCurrency = (value) => {
+    if (value) {
+      const arr = filteredData.filter((order) => {
+        const month = new Intl.DateTimeFormat("en-US", {
+          month: "long",
+        }).format(new Date(order.node.createdAt));
+        return month == value;
+      });
+
+      const arrFiltered = arr.map((order) => {
+        const {
+          totalPriceSet: { presentmentMoney },
+          name,
+          createdAt,
+          lineItems: { edges },
+        } = order.node;
+        const productName = edges.filter((item) =>
+          item.node.name.includes("OrderDefense")
+        );
+        const price = productName.map(
+          (item) => item.node.originalUnitPriceSet.shopMoney.amount
+        );
+        const rowsItems = [
+          name,
+          `$${price.toString()}`,
+          `$${presentmentMoney.amount}`,
+        ];
+        return rowsItems;
+      });
+
+      setSortedRows(arrFiltered);
+    }
+  };
+
   useEffect(() => {
     dataOrder();
-    totalOrder();
   }, [data]);
+
+  useEffect(() => {
+    optionsData();
+    totalOrder();
+  }, [filteredData]);
 
   if (error) return <div>{error.message}</div>;
 
@@ -131,12 +214,12 @@ const OrderList = () => {
               value={selected}
             />
           </div>
-          {!loading && orders.length && (
+          {!loading && (
             <Card>
               <DataTable
                 columnContentTypes={["text", "numeric", "numeric"]}
                 headings={["Orders", "Price", "Net sales"]}
-                rows={orders}
+                rows={rows}
                 totals={["", "", `$${total}`]}
               />
             </Card>
