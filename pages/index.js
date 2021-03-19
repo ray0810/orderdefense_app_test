@@ -35,7 +35,7 @@ const CREATE_SCRIPT = gql`
 
 const QYERY_SCRIPT = gql`
   query {
-    scriptTags(first: 10) {
+    scriptTags(first: 1) {
       edges {
         node {
           id
@@ -92,7 +92,7 @@ const Index = () => {
   ] = useMutation(DELETE_SCRIPT, { refetchQueries: [{ query: QYERY_SCRIPT }] });
 
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-  const [active, setActive] = useState(true);
+  const [active, setActive] = useState(false);
   const handleToggle = () => setActive((active) => !active);
 
   const contentStatus = active ? "Disable" : "Enable";
@@ -825,6 +825,7 @@ const Index = () => {
       },
     });
     console.log("script installed");
+    setShowSuccessBanner(true);
   };
 
   const deleteScript = async (id) => {
@@ -836,12 +837,15 @@ const Index = () => {
     console.log("script deleted");
   };
 
+  const isNotEmptyDefaultData = () => data && !data.scriptTags.edges.length;
+
   useEffect(() => {
-    (async () => {
-      await onSubmitMutation();
-      await onSubmitInject();
+    if (isNotEmptyDefaultData()) {
+      onSubmitMutation();
+      onSubmitInject();
       setShowSuccessBanner(true);
-    })();
+      handleToggle();
+    }
   }, []);
 
   if (loading) return <div>Loading...</div>;
@@ -851,38 +855,37 @@ const Index = () => {
     <Page>
       <Layout>
         <Layout.Section>
-          {createScriptData && (
-            <Card>
-              <SettingToggle
-                action={{
-                  content: contentStatus,
-                  onAction: () => {
-                    const scriptId = data.scriptTags.edges.find(
-                      (item) => item.node.id
-                    );
-                    handleToggle();
-                    if (!active) {
-                      onSubmitMutation();
-                      onSubmitInject();
-                    }
-                    if (active) {
-                      setShowSuccessBanner(false);
-                      deleteScripts({
-                        variables: {
-                          id: scriptId.node.id,
-                        },
-                        refetchQueries: [{ query: QYERY_SCRIPT }],
-                      });
-                    }
-                  },
-                }}
-                enabled={active}
-              >
-                OrderDefense is{" "}
-                <TextStyle variation="strong">{textStatus}</TextStyle>
-              </SettingToggle>
-            </Card>
-          )}
+          <Card>
+            <SettingToggle
+              action={{
+                content: contentStatus,
+                onAction: () => {
+                  handleToggle();
+                  const scriptId = data.scriptTags.edges.find(
+                    (item) => item.node.id
+                  );
+                  if (!active) {
+                    onSubmitMutation();
+                    onSubmitInject();
+                    setShowSuccessBanner(true);
+                  }
+                  if (active) {
+                    setShowSuccessBanner(false);
+                    deleteScripts({
+                      variables: {
+                        id: scriptId.node.id,
+                      },
+                      refetchQueries: [{ query: QYERY_SCRIPT }],
+                    });
+                  }
+                },
+              }}
+              enabled={active}
+            >
+              OrderDefense is{" "}
+              <TextStyle variation="strong">{textStatus}</TextStyle>
+            </SettingToggle>
+          </Card>
           <Card sectioned>
             <FormLayout>
               <Heading>OrderDefense Product Installation</Heading>
@@ -892,12 +895,13 @@ const Index = () => {
                   status="success"
                 />
               )}
-              {!showSuccessBanner && !createProductLoading && (
-                <Banner
-                  title={`OrderDefense is not installed.`}
-                  status="info"
-                />
-              )}
+              {(!showSuccessBanner && !createProductLoading) ||
+                (!isNotEmptyDefaultData() && (
+                  <Banner
+                    title={`OrderDefense is not installed.`}
+                    status="info"
+                  />
+                ))}
               {createProductLoading && <SkeletonBodyText />}
             </FormLayout>
           </Card>
@@ -907,12 +911,13 @@ const Index = () => {
               {createScriptData && showSuccessBanner && (
                 <Banner title={`Script installed`} status="success" />
               )}
-              {!showSuccessBanner && !createScriptLoading && (
-                <Banner
-                  title={`OrderDefense Script is not installed.`}
-                  status="info"
-                />
-              )}
+              {(!showSuccessBanner && !createScriptLoading) ||
+                (!isNotEmptyDefaultData() && (
+                  <Banner
+                    title={`OrderDefense Script is not installed.`}
+                    status="info"
+                  />
+                ))}
               {createScriptLoading && <SkeletonBodyText />}
             </FormLayout>
           </Card>
@@ -921,15 +926,6 @@ const Index = () => {
               <Card sectioned key={item.node.id}>
                 <FormLayout>
                   <Heading>Delete Scripts</Heading>
-                  {/* {deleteScriptData && showSuccessBanner && (
-                      <Banner
-                        title={`Deleted scripts`}
-                        status="success"
-                        onDismiss={() => {
-                          setShowSuccessBanner(false);
-                        }}
-                      />
-                    )}  */}
                   <TextContainer>
                     <p>{item.node.id}</p>
                     <p>Delete scripts installed on the store.</p>
@@ -938,6 +934,7 @@ const Index = () => {
                     size="medium"
                     primary={true}
                     onClick={() => {
+                      handleToggle();
                       deleteScripts({
                         variables: {
                           id: item.node.id,
