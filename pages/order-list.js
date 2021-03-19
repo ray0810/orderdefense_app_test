@@ -11,12 +11,13 @@ import {
   SkeletonBodyText,
   Layout,
   SkeletonDisplayText,
+  Button,
 } from "@shopify/polaris";
 import gql from "graphql-tag";
 
 const QUERY_ORDERS = gql`
-  query($orderNum: Int!, $cursor: String) {
-    orders(first: $orderNum, after: $cursor) {
+  query($orderNum: Int!) {
+    orders(first: $orderNum) {
       pageInfo {
         hasNextPage
         hasPreviousPage
@@ -61,9 +62,10 @@ const OrderList = () => {
   const [sortedRows, setSortedRows] = useState(null);
   const [selected, setSelected] = useState("All");
   const [filteredData, setFilteredData] = useState([]);
+  const [page, setPage] = useState(50);
 
   const { loading, error, data } = useQuery(QUERY_ORDERS, {
-    variables: { orderNum: 50 },
+    variables: { orderNum: page },
   });
 
   const handleSelectChange = useCallback(
@@ -215,14 +217,29 @@ const OrderList = () => {
             />
           </div>
           {!loading && (
-            <Card>
-              <DataTable
-                columnContentTypes={["text", "numeric", "numeric"]}
-                headings={["Orders", "Price", "Net sales"]}
-                rows={rows}
-                totals={["", "", `$${total}`]}
-              />
-            </Card>
+            <>
+              <Card>
+                <DataTable
+                  columnContentTypes={["text", "numeric", "numeric"]}
+                  headings={["Orders", "Price", "Net sales"]}
+                  rows={rows}
+                  totals={["", "", `$${total}`]}
+                />
+              </Card>
+              {filteredData.length >= 50 && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "flex-end",
+                    marginTop: "20px",
+                  }}
+                >
+                  <Button primary onClick={() => setPage(page + 50)}>
+                    Load More...
+                  </Button>
+                </div>
+              )}
+            </>
           )}
           {loading && <SkeletonBodyText />}
         </Layout.Section>
