@@ -11,6 +11,8 @@ import {
   SettingToggle,
   TextStyle,
   SkeletonBodyText,
+  List,
+  DisplayText,
 } from "@shopify/polaris";
 import { Query } from "react-apollo";
 import { useLazyQuery, useMutation, useQuery } from "@apollo/react-hooks";
@@ -76,7 +78,36 @@ const CREATE_PRODUCT = gql`
   }
 `;
 
+const firstDay = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+const QUERY_ORDERS = gql`
+  query {
+    orders(first: 50, query: "created_at_min:${firstDay.toISOString()}") {
+      edges {
+        node {
+          id 
+          createdAt
+          totalPriceSet {
+            shopMoney {
+              amount
+            }
+          }
+          lineItems(first: 10) {
+            edges {
+              node {
+                id
+                name
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 const Index = () => {
+  const { data: getOrdersByDate } = useQuery(QUERY_ORDERS);
   const [
     createProduct,
     { loading: createProductLoading, data: createProductData },
@@ -92,11 +123,28 @@ const Index = () => {
   ] = useMutation(DELETE_SCRIPT, { refetchQueries: [{ query: QYERY_SCRIPT }] });
 
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-  const [active, setActive] = useState(false);
+  const [totalOrders, setTotalOrders] = useState([]);
+  const [active, setActive] = useState(true);
+
   const handleToggle = () => setActive((active) => !active);
 
   const contentStatus = active ? "Disable" : "Enable";
   const textStatus = active ? "enabled" : "disabled";
+
+  const getAllOrders = () => {
+    const arr =
+      getOrdersByDate &&
+      getOrdersByDate.orders.edges.filter((edge) => {
+        const {
+          lineItems: { edges },
+        } = edge.node;
+        const ordersData = edges.find((item) =>
+          item.node.name.includes("OrderDefense")
+        );
+        return ordersData;
+      });
+    setTotalOrders(arr);
+  };
 
   const onSubmitMutation = async () => {
     await createProduct({
@@ -833,20 +881,35 @@ const Index = () => {
       variables: {
         id: id,
       },
+      refetchQueries: [{ query: QYERY_SCRIPT }],
     });
+    setShowSuccessBanner(false);
     console.log("script deleted");
   };
 
-  const isNotEmptyDefaultData = () => data && !data.scriptTags.edges.length;
+  const isEmptyDefaultData = () => data && !data.scriptTags.edges.length;
+
+  const installScripts = async () => {
+    try {
+      await onSubmitMutation();
+      await onSubmitInject();
+      setShowSuccessBanner(true);
+    } catch (e) {
+      console.log(e);
+    }
+  };
 
   useEffect(() => {
-    if (isNotEmptyDefaultData()) {
-      onSubmitMutation();
-      onSubmitInject();
+    if (!isEmptyDefaultData()) {
+      installScripts();
       setShowSuccessBanner(true);
       handleToggle();
     }
   }, []);
+
+  useEffect(() => {
+    getAllOrders();
+  }, [getOrdersByDate]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error.message}</div>;
@@ -864,20 +927,8 @@ const Index = () => {
                   const scriptId = data.scriptTags.edges.find(
                     (item) => item.node.id
                   );
-                  if (!active) {
-                    onSubmitMutation();
-                    onSubmitInject();
-                    setShowSuccessBanner(true);
-                  }
-                  if (active) {
-                    setShowSuccessBanner(false);
-                    deleteScripts({
-                      variables: {
-                        id: scriptId.node.id,
-                      },
-                      refetchQueries: [{ query: QYERY_SCRIPT }],
-                    });
-                  }
+                  if (!active) installScripts();
+                  else deleteScript(scriptId.node.id);
                 },
               }}
               enabled={active}
@@ -889,72 +940,36 @@ const Index = () => {
           <Card sectioned>
             <FormLayout>
               <Heading>OrderDefense Product Installation</Heading>
-              {createProductData && showSuccessBanner && (
+              {showSuccessBanner && !createProductLoading && (
                 <Banner
                   title={`OrderDefense successfully created.`}
                   status="success"
                 />
               )}
-              {(!showSuccessBanner && !createProductLoading) ||
-                (!isNotEmptyDefaultData() && (
-                  <Banner
-                    title={`OrderDefense is not installed.`}
-                    status="info"
-                  />
-                ))}
+              {!showSuccessBanner && !createProductLoading && (
+                <Banner
+                  title={`OrderDefense is not installed.`}
+                  status="info"
+                />
+              )}
               {createProductLoading && <SkeletonBodyText />}
             </FormLayout>
           </Card>
           <Card sectioned>
             <FormLayout>
               <Heading>OrderDefense Script Installation</Heading>
-              {createScriptData && showSuccessBanner && (
+              {showSuccessBanner && !createScriptLoading && (
                 <Banner title={`Script installed`} status="success" />
               )}
-              {(!showSuccessBanner && !createScriptLoading) ||
-                (!isNotEmptyDefaultData() && (
-                  <Banner
-                    title={`OrderDefense Script is not installed.`}
-                    status="info"
-                  />
-                ))}
+              {!showSuccessBanner && !createScriptLoading && (
+                <Banner
+                  title={`OrderDefense Script is not installed.`}
+                  status="info"
+                />
+              )}
               {createScriptLoading && <SkeletonBodyText />}
             </FormLayout>
           </Card>
-          {data.scriptTags.edges.map((item) => {
-            return (
-              <Card sectioned key={item.node.id}>
-                <FormLayout>
-                  <Heading>Delete Scripts</Heading>
-                  <TextContainer>
-                    <p>{item.node.id}</p>
-                    <p>Delete scripts installed on the store.</p>
-                  </TextContainer>
-                  <Button
-                    size="medium"
-                    primary={true}
-                    onClick={() => {
-                      handleToggle();
-                      deleteScripts({
-                        variables: {
-                          id: item.node.id,
-                        },
-                      });
-                    }}
-                  >
-                    Delete Installed Scripts
-                    {deleteScriptLoading && (
-                      <Spinner
-                        accessibilityLabel="Spinner example"
-                        size="small"
-                        color="white"
-                      />
-                    )}
-                  </Button>
-                </FormLayout>
-              </Card>
-            );
-          })}
         </Layout.Section>
       </Layout>
     </Page>

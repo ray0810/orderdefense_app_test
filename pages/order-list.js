@@ -101,9 +101,10 @@ const OrderList = () => {
         const price = edges.map(
           (item) => item.node.originalUnitPriceSet.shopMoney.amount
         );
+
         const rowsItems = [
           name,
-          `$${price.toString()}`,
+          `$${price[0] && price[0].toString()}`,
           `$${presentmentMoney.amount}`,
         ];
         return rowsItems;
@@ -141,7 +142,7 @@ const OrderList = () => {
         const money = parseFloat(presentmentMoney.amount);
         return money;
       });
-      const totalSum = orderPrice.reduce((a, b) => a + b);
+      const totalSum = orderPrice.reduce((a, b) => a + b).toFixed(2);
       setTotal(totalSum);
     }
   };
@@ -150,6 +151,7 @@ const OrderList = () => {
 
   const sortCurrency = (value) => {
     if (value) {
+      console.log(filteredData, "filter");
       const arr = filteredData.filter((order) => {
         const month = new Intl.DateTimeFormat("en-US", {
           month: "long",
