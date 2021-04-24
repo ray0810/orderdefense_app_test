@@ -6,7 +6,7 @@
     "test": "jest",
     "dev": "cross-env NODE_ENV=development nodemon ./server/index.js --watch ./server/index.js",
     "build": "NEXT_TELEMETRY_DISABLED=1 next build",
-    "start": "cross-env NODE_ENV=production node ./server/index.js"
+    "start": "NODE_ENV=production node ./server/index.js"
   },
   "repository": {
     "type": "git",
@@ -35,7 +35,6 @@
     "@zeit/next-css": "^1.0.1",
     "apollo-boost": "^0.4.9",
     "cookie-parser": "^1.4.5",
-    "cross-env": "^7.0.3",
     "dotenv": "^8.2.0",
     "graphql": "^14.7.0",
     "graphql-request": "^3.4.0",
