@@ -74,10 +74,15 @@ app.prepare().then(() => {
         if (registration.success) {
           console.log("Successfully registered webhook!");
         } else {
-          console.log("Failed to register webhook", registration.result);
+          console.log(
+            "Failed to register webhook",
+            JSON.stringify(registration.result, null, 4)
+          );
         }
-
-        const returnUrl = `https://${Shopify.Context.HOST_NAME}/?shop=${shop}`;
+        // console.log('\n Shopify context is : ', JSON.stringify(Shopify, null, 4));
+        // console.log('Shop is : ', shop);
+        const returnUrl = `https://${shop}/?shop=${shop}`;
+        // console.log('Return url is : ', returnUrl);
         const subscriptionUrl = await getSubscriptionUrl(
           accessToken,
           shop,

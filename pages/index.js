@@ -15,7 +15,13 @@ import {
   DisplayText,
 } from "@shopify/polaris";
 import { Query } from "react-apollo";
-import { useLazyQuery, useMutation, useQuery } from "@apollo/react-hooks";
+// import { useApolloClient } from '@apollo/client';
+import {
+  useLazyQuery,
+  useMutation,
+  useQuery,
+  useApolloClient,
+} from "@apollo/react-hooks";
 import gql from "graphql-tag";
 import { useState, useCallback, useEffect } from "react";
 
@@ -37,12 +43,24 @@ const CREATE_SCRIPT = gql`
 
 const QYERY_SCRIPT = gql`
   query {
-    scriptTags(first: 1) {
+    scriptTags(src: "https://orderdefense.com/appscript.js", first: 1) {
       edges {
         node {
           id
           src
           displayScope
+        }
+      }
+    }
+  }
+`;
+
+const QUERY_PRODUCT = gql`
+  query {
+    products(first: 1, query: "title:OrderDefense") {
+      edges {
+        node {
+          id
         }
       }
     }
@@ -107,6 +125,9 @@ const QUERY_ORDERS = gql`
 `;
 
 const Index = () => {
+  const client = useApolloClient();
+  let active = false;
+  let showSuccessBanner = false;
   const { data: getOrdersByDate } = useQuery(QUERY_ORDERS);
   const [
     createProduct,
@@ -122,14 +143,11 @@ const Index = () => {
     { loading: deleteScriptLoading, data: deleteScriptData },
   ] = useMutation(DELETE_SCRIPT, { refetchQueries: [{ query: QYERY_SCRIPT }] });
 
-  const [showSuccessBanner, setShowSuccessBanner] = useState(false);
+  // const [showSuccessBanner, setShowSuccessBanner] = useState(false);
   const [totalOrders, setTotalOrders] = useState([]);
-  const [active, setActive] = useState(true);
+  // const [active, setActive] = useState(true);
 
   const handleToggle = () => setActive((active) => !active);
-
-  const contentStatus = active ? "Disable" : "Enable";
-  const textStatus = active ? "enabled" : "disabled";
 
   const getAllOrders = () => {
     const arr =
@@ -860,51 +878,75 @@ const Index = () => {
       },
     });
     console.log("Product created");
-    setShowSuccessBanner(true);
+    // setShowSuccessBanner(true);
   };
 
   const onSubmitInject = async () => {
-    await createScripts({
-      variables: {
-        input: {
-          displayScope: "ONLINE_STORE",
-          src: "https://orderdefense.com/appscript.js",
+    try {
+      await createScripts({
+        variables: {
+          input: {
+            displayScope: "ONLINE_STORE",
+            src: "https://orderdefense.com/appscript.js",
+          },
         },
-      },
-    });
-    console.log("script installed");
-    setShowSuccessBanner(true);
+      });
+      // setActive(true);
+      // setShowSuccessBanner(true);
+      console.log("script injected");
+    } catch (e) {
+      console.log(e);
+    }
   };
 
   const deleteScript = async (id) => {
-    await deleteScripts({
-      variables: {
-        id: id,
-      },
-      refetchQueries: [{ query: QYERY_SCRIPT }],
-    });
-    setShowSuccessBanner(false);
-    console.log("script deleted");
+    try {
+      await deleteScripts({
+        variables: {
+          id: id,
+        },
+      });
+      console.log("script deleted");
+    } catch (e) {
+      console.log(e);
+    }
   };
-
-  const isEmptyDefaultData = () => data && !data.scriptTags.edges.length;
 
   const installScripts = async () => {
     try {
-      await onSubmitMutation();
+      const res = await client.query({ query: QUERY_PRODUCT });
+      if (
+        res &&
+        res.data &&
+        res.data.products &&
+        res.data.products.edges &&
+        res.data.products.edges.length === 0
+      ) {
+        // order defense product don't exist create that
+        await onSubmitMutation();
+      }
       await onSubmitInject();
-      setShowSuccessBanner(true);
     } catch (e) {
       console.log(e);
     }
   };
 
   useEffect(() => {
-    if (!isEmptyDefaultData()) {
-      installScripts();
-      setShowSuccessBanner(true);
-      handleToggle();
-    }
+    // if (!isEmptyDefaultData()) {
+    //   installScripts();
+    //   setShowSuccessBanner(true);
+    //   handleToggle();
+    // }
+    // console.log(' use effect is called!');
+    // console.log(' data in use script is : ', JSON.stringify(data, null, 4));
+    // if (data && data.scriptTags && data.scriptTags.edges && data.scriptTags.edges.length) {
+    //   console.log('length is : ', data.scriptTags.edges.length);
+    //   setShowSuccessBanner(true);
+    //   setActive(true);
+    // } else {
+    //   setActive(false);
+    //   setShowSuccessBanner(false);
+    // }
   }, []);
 
   useEffect(() => {
@@ -913,7 +955,17 @@ const Index = () => {
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error.message}</div>;
-
+  // console.log('Data from render method is : ', JSON.stringify(data, null, 4));
+  active =
+    data &&
+    data.scriptTags &&
+    data.scriptTags.edges &&
+    data.scriptTags.edges.length
+      ? true
+      : false;
+  showSuccessBanner = active;
+  const textStatus = active ? "enabled" : "disabled";
+  const contentStatus = active ? "Disable" : "Enable";
   return (
     <Page>
       <Layout>
@@ -923,7 +975,7 @@ const Index = () => {
               action={{
                 content: contentStatus,
                 onAction: () => {
-                  handleToggle();
+                  // handleToggle();
                   const scriptId = data.scriptTags.edges.find(
                     (item) => item.node.id
                   );
