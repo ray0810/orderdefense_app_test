@@ -33,7 +33,13 @@ Shopify.Context.initialize({
   SESSION_STORAGE: new Shopify.Session.MemorySessionStorage(),
 });
 
-const { SHOPIFY_API_SECRET, SHOPIFY_API_KEY, HOST, SCOPES } = process.env;
+const {
+  SHOPIFY_API_SECRET,
+  SHOPIFY_API_KEY,
+  HOST,
+  SCOPES,
+  APP_NAME,
+} = process.env;
 
 app.prepare().then(() => {
   const server = new Koa();
@@ -81,7 +87,8 @@ app.prepare().then(() => {
         }
         // console.log('\n Shopify context is : ', JSON.stringify(Shopify, null, 4));
         // console.log('Shop is : ', shop);
-        const returnUrl = `https://${shop}/?shop=${shop}`;
+        const returnUrl = `https://${shop}/admin/apps/${APP_NAME}`;
+        // const returnUrl = `https://${shop}/?shop=${shop}`;
         // console.log('Return url is : ', returnUrl);
         const subscriptionUrl = await getSubscriptionUrl(
           accessToken,

@@ -15,6 +15,46 @@ import {
 } from "@shopify/polaris";
 import gql from "graphql-tag";
 
+// const QUERY_ORDERS = gql`
+//   query($orderNum: Int!) {
+//     orders(first: $orderNum) {
+//       pageInfo {
+//         hasNextPage
+//         hasPreviousPage
+//       }
+//       edges {
+//         cursor
+//         node {
+//           id
+//           name
+//           createdAt
+//           displayFulfillmentStatus
+//           tags
+//           presentmentCurrencyCode
+//           lineItems(first: 5) {
+//             edges {
+//               node {
+//                 id
+//                 name
+//                 originalUnitPriceSet {
+//                   shopMoney {
+//                     amount
+//                   }
+//                 }
+//               }
+//             }
+//           }
+//           totalPriceSet {
+//             presentmentMoney {
+//               amount
+//             }
+//           }
+//         }
+//       }
+//     }
+//   }
+// `;
+
 const QUERY_ORDERS = gql`
   query($orderNum: Int!) {
     orders(first: $orderNum) {
@@ -42,11 +82,6 @@ const QUERY_ORDERS = gql`
                   }
                 }
               }
-            }
-          }
-          totalPriceSet {
-            presentmentMoney {
-              amount
             }
           }
         }
@@ -93,19 +128,24 @@ const OrderList = () => {
       setFilteredData(arr);
       const newArr = arr.map((order) => {
         const {
-          totalPriceSet: { presentmentMoney },
+          // totalPriceSet: { presentmentMoney },
           name,
           createdAt,
           lineItems: { edges },
         } = order.node;
-        const price = edges.map(
+
+        const productName = edges.filter((item) =>
+          item.node.name.includes("OrderDefense")
+        );
+
+        const price = productName.map(
           (item) => item.node.originalUnitPriceSet.shopMoney.amount
         );
 
         const rowsItems = [
           name,
           `$${price[0] && price[0].toString()}`,
-          `$${presentmentMoney.amount}`,
+          // `$${presentmentMoney.amount}`,
         ];
         return rowsItems;
       });
@@ -137,12 +177,25 @@ const OrderList = () => {
     if (filteredData.length) {
       const orderPrice = filteredData.map((order) => {
         const {
-          totalPriceSet: { presentmentMoney },
+          // totalPriceSet: { presentmentMoney },
+          lineItems: { edges },
         } = order.node;
-        const money = parseFloat(presentmentMoney.amount);
-        return money;
+
+        const productName = edges.filter((item) =>
+          item.node.name.includes("OrderDefense")
+        );
+
+        const price = productName.map(
+          (item) => item.node.originalUnitPriceSet.shopMoney.amount
+        );
+
+        // const money = parseFloat(presentmentMoney.amount);
+        // return money;
+        return price && price.length ? price[0] : 0;
       });
-      const totalSum = orderPrice.reduce((a, b) => a + b).toFixed(2);
+      const totalSum = orderPrice
+        .reduce((a, b) => Number(a) + Number(b))
+        .toFixed(2);
       setTotal(totalSum);
     }
   };
@@ -151,7 +204,6 @@ const OrderList = () => {
 
   const sortCurrency = (value) => {
     if (value) {
-      console.log(filteredData, "filter");
       const arr = filteredData.filter((order) => {
         const month = new Intl.DateTimeFormat("en-US", {
           month: "long",
@@ -161,7 +213,7 @@ const OrderList = () => {
 
       const arrFiltered = arr.map((order) => {
         const {
-          totalPriceSet: { presentmentMoney },
+          // totalPriceSet: { presentmentMoney },
           name,
           createdAt,
           lineItems: { edges },
@@ -172,10 +224,11 @@ const OrderList = () => {
         const price = productName.map(
           (item) => item.node.originalUnitPriceSet.shopMoney.amount
         );
+
         const rowsItems = [
           name,
-          `$${price.toString()}`,
-          `$${presentmentMoney.amount}`,
+          `$${price[0] && price[0].toString()}`,
+          // `$${presentmentMoney.amount}`,
         ];
         return rowsItems;
       });
@@ -222,10 +275,10 @@ const OrderList = () => {
             <>
               <Card>
                 <DataTable
-                  columnContentTypes={["text", "numeric", "numeric"]}
-                  headings={["Orders", "Price", "Net sales"]}
+                  columnContentTypes={["text", "numeric"]}
+                  headings={["Orders", "Price"]}
                   rows={rows}
-                  totals={["", "", `$${total}`]}
+                  totals={["", `$${total}`]}
                 />
               </Card>
               {filteredData.length >= 50 && (
