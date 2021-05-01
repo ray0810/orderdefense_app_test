@@ -210,7 +210,7 @@ const OrderList = () => {
         }).format(new Date(order.node.createdAt));
         return month == value;
       });
-
+      setFilteredData(arr);
       const arrFiltered = arr.map((order) => {
         const {
           // totalPriceSet: { presentmentMoney },
