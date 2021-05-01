@@ -203,6 +203,7 @@ const OrderList = () => {
   const rows = sortedRows ? sortedRows : orders;
 
   const sortCurrency = (value) => {
+    let total = 0;
     if (value) {
       const arr = filteredData.filter((order) => {
         const month = new Intl.DateTimeFormat("en-US", {
@@ -210,7 +211,7 @@ const OrderList = () => {
         }).format(new Date(order.node.createdAt));
         return month == value;
       });
-      setFilteredData(arr);
+      // setFilteredData(arr);
       const arrFiltered = arr.map((order) => {
         const {
           // totalPriceSet: { presentmentMoney },
@@ -224,7 +225,7 @@ const OrderList = () => {
         const price = productName.map(
           (item) => item.node.originalUnitPriceSet.shopMoney.amount
         );
-
+        total = total + (price && price[0]) ? price[0] : 0;
         const rowsItems = [
           name,
           `$${price[0] && price[0].toString()}`,
@@ -232,8 +233,8 @@ const OrderList = () => {
         ];
         return rowsItems;
       });
-
       setSortedRows(arrFiltered);
+      setTotal(total.toFixed(2));
     }
   };
 
