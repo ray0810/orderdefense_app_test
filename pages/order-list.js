@@ -108,6 +108,7 @@ const OrderList = () => {
       setSelected(value);
       sortCurrency(value);
       if (value === "All") {
+        totalOrder();
         setSortedRows(orders);
       }
     },
@@ -203,6 +204,7 @@ const OrderList = () => {
   const rows = sortedRows ? sortedRows : orders;
 
   const sortCurrency = (value) => {
+    let total = 0;
     if (value) {
       const arr = filteredData.filter((order) => {
         const month = new Intl.DateTimeFormat("en-US", {
@@ -210,7 +212,6 @@ const OrderList = () => {
         }).format(new Date(order.node.createdAt));
         return month == value;
       });
-      // setFilteredData(arr);
       const arrFiltered = arr.map((order) => {
         const {
           // totalPriceSet: { presentmentMoney },
@@ -224,6 +225,9 @@ const OrderList = () => {
         const price = productName.map(
           (item) => item.node.originalUnitPriceSet.shopMoney.amount
         );
+        if (price && price[0]) {
+          total = total + Number(price[0]);
+        }
         const rowsItems = [
           name,
           `$${price[0] && price[0].toString()}`,
@@ -232,6 +236,7 @@ const OrderList = () => {
         return rowsItems;
       });
       setSortedRows(arrFiltered);
+      setTotal(total.toFixed(2));
     }
   };
 
@@ -241,14 +246,11 @@ const OrderList = () => {
 
   useEffect(() => {
     optionsData();
-    // totalOrder();
+    totalOrder();
   }, [filteredData]);
 
   if (error) return <div>{error.message}</div>;
-  const calculatedToltal = rows
-    .map((r) => r[1])
-    .reduce((a, b) => Number(a) + Number(b))
-    .toFixed(2);
+
   return (
     <Page>
       <Layout>
@@ -279,7 +281,7 @@ const OrderList = () => {
                   columnContentTypes={["text", "numeric"]}
                   headings={["Orders", "Price"]}
                   rows={rows}
-                  totals={["", `$${calculatedToltal}`]}
+                  totals={["", `$${total}`]}
                 />
               </Card>
               {filteredData.length >= 50 && (
