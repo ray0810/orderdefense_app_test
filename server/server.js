@@ -15,12 +15,14 @@ import { changeSubscription } from "./changeSubscription";
 import { receiveWebhook, registerWebhook } from "@shopify/koa-shopify-webhooks";
 import { PAYMENT_PERCENT } from "../constants/constants";
 
+const koaBody = require("koa-body");
 const localStorage = new LocalStorage("./storage");
 
 dotenv.config();
 const port = parseInt(process.env.PORT, 10) || 8081;
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
+
 const handle = app.getRequestHandler();
 
 Shopify.Context.initialize({
@@ -127,6 +129,18 @@ app.prepare().then(() => {
         await changeSubscription(price, token, url);
       }
     }
+  });
+
+  router.post("/customer_data_reuest", koaBody(), async (ctx) => {
+    ctx.body = { mssage: "no data stored ever" };
+  });
+
+  router.post("/customer_data_erasure", koaBody(), async (ctx) => {
+    ctx.body = { mssage: "no data stored ever" };
+  });
+
+  router.post("/shop_data_erasure", koaBody(), async (ctx) => {
+    ctx.body = { mssage: "no data stored ever" };
   });
 
   server.use(graphQLProxy({ version: ApiVersion.October20 }));
