@@ -131,7 +131,7 @@ app.prepare().then(() => {
     }
   });
 
-  router.post("/customer_data_reuest", koaBody(), async (ctx) => {
+  router.post("/customer_data_request", koaBody(), async (ctx) => {
     ctx.body = { mssage: "no data stored ever" };
   });
 
