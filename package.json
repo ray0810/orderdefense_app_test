@@ -41,6 +41,8 @@
     "http-proxy-middleware": "^1.1.0",
     "isomorphic-fetch": "^3.0.0",
     "koa": "^2.13.1",
+    "koa-body": "^4.2.0",
+    "koa-bodyparser": "^4.3.0",
     "koa-mount": "^4.0.0",
     "koa-router": "^10.0.0",
     "koa-session": "^6.1.0",
