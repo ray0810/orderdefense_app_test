@@ -144,7 +144,6 @@ app.prepare().then(async () => {
 
   router.post("/webhooks/orders/create", webhook, async (ctx) => {
 
-    console.log('\n orders create webhook recieved ==> ');
     const token = localStorage.getItem("Token");
     const url = localStorage.getItem("Shop");
 
