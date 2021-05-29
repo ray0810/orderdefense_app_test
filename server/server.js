@@ -7,10 +7,13 @@ import Koa from "koa";
 import next from "next";
 import Router from "koa-router";
 import { receiveWebhook } from "@shopify/koa-shopify-webhooks";
+import { LocalStorage } from "node-localstorage";
 
 import { getSubscriptionUrl } from "./getSubscriptionUrl";
 import { changeSubscription } from "./changeSubscription";
 
+
+const localStorage = new LocalStorage("./storage");
 dotenv.config();
 const port = parseInt(process.env.PORT, 10) || 8081;
 const dev = process.env.NODE_ENV !== "production";
@@ -54,6 +57,8 @@ app.prepare().then(async () => {
       async afterAuth(ctx) {
         // Access token and shop available in ctx.state.shopify
         const { shop, accessToken, scope } = ctx.state.shopify;
+        localStorage.setItem("Token", accessToken);
+        localStorage.setItem("Shop", shop);
         const host = ctx.query.host;
         ACTIVE_SHOPIFY_SHOPS[shop] = scope;
 
@@ -140,8 +145,8 @@ app.prepare().then(async () => {
   router.post("/webhooks/orders/create", webhook, async (ctx) => {
 
     console.log('\n orders create webhook recieved ==> ');
-    // const token = localStorage.getItem("Token");
-    // const url = localStorage.getItem("Shop");
+    const token = localStorage.getItem("Token");
+    const url = localStorage.getItem("Shop");
 
     const order = ctx.state.webhook.payload.line_items.find((item) =>
       item.title.includes("OrderDefense")
