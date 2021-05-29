@@ -7,24 +7,34 @@ Boilerplate to create an embedded Shopify app made with Node, [Next.js](https://
 
 ## Installation
 
-Using the [Shopify-App-CLI](https://github.com/Shopify/shopify-app-cli) run:
+// clone repo
 
-```sh
-~/ $ shopify create project APP_NAME
-```
+1. git clone https://github.com/ray0810/orderdefense_app_test.git
 
-Or, fork and clone repo
+// go to main folder
 
-## Requirements
+2. cd oderefense_app_test
 
-- If you don’t have one, [create a Shopify partner account](https://partners.shopify.com/signup).
-- If you don’t have one, [create a Development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) where you can install and test your app.
-- In the Partner dashboard, [create a new app](https://help.shopify.com/en/api/tools/partner-dashboard/your-apps#create-a-new-app). You’ll need this app’s API credentials during the setup process.
+// install all dependencies
 
-## Usage
+3. npm install
 
-This repository is used by [Shopify-App-CLI](https://github.com/Shopify/shopify-app-cli) as a scaffold for Node apps. You can clone or fork it yourself, but it’s faster and easier to use Shopify App CLI, which handles additional routine development tasks for you.
+// rename env file
 
-## License
+4. rename file .env.example to only .env
 
-This respository is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+// go to dashboard shopify partners and copy keys for app in the App setup tab
+
+5. Copy keys to .env file and add your ngrok link.
+   After write your ngrok link to app in dashboard shopify partners App
+
+// run your localhost
+
+6. in terminal write scripts :
+   ## npm run build
+
+after this:
+
+## npm run start
+
+After go to "Orderdefense Test" app in dashboard.
